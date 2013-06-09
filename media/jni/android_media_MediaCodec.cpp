@@ -96,8 +96,7 @@ status_t JMediaCodec::initCheck() const {
 }
 
 JMediaCodec::~JMediaCodec() {
-    if (mCodec != NULL)
-        mCodec->release();
+    mCodec->release();
 
     JNIEnv *env = AndroidRuntime::getJNIEnv();
 

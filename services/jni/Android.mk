@@ -16,12 +16,14 @@ LOCAL_SRC_FILES:= \
     com_android_server_VibratorService.cpp \
     com_android_server_location_GpsLocationProvider.cpp \
     com_android_server_connectivity_Vpn.cpp \
+    com_android_server_DisplayManagerService.cpp \
     onload.cpp
 
 LOCAL_C_INCLUDES += \
     $(JNI_H_INCLUDE) \
     frameworks/base/services \
     frameworks/base/core/jni \
+    frameworks/native/include \
     external/skia/include/core \
     libcore/include \
     libcore/include/libsuspend \

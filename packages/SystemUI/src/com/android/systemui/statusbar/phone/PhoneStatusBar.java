@@ -142,8 +142,6 @@ public class PhoneStatusBar extends BaseStatusBar {
     private static final int BRIGHTNESS_CONTROL_LINGER_THRESHOLD = 20;
 
     private boolean mBrightnessControl;
-    private boolean mAutoBrightness;
-
 
     private static final int NOTIFICATION_PRIORITY_MULTIPLIER = 10; // see NotificationManagerService
     private static final int HIDE_ICONS_BELOW_SCORE = Notification.PRIORITY_LOW * NOTIFICATION_PRIORITY_MULTIPLIER;
@@ -235,8 +233,6 @@ public class PhoneStatusBar extends BaseStatusBar {
 
     // on-screen navigation buttons
     private NavigationBarView mNavigationBarView = null;
-    private boolean mHasNavigationBar;
-    boolean checkNavBar;
 
     // the tracker view
     int mTrackingPosition; // the position of the top of the tracking view.
@@ -307,8 +303,6 @@ public class PhoneStatusBar extends BaseStatusBar {
                     Settings.System.STATUS_BAR_BRIGHTNESS_CONTROL), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.SCREEN_BRIGHTNESS_MODE), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.ON_SCREEN_BUTTONS), false, this);
             update();
         }
 
@@ -319,21 +313,6 @@ public class PhoneStatusBar extends BaseStatusBar {
 
         public void update() {
             ContentResolver resolver = mContext.getContentResolver();
-            mHasNavigationBar = (Settings.System.getInt(resolver,
-                    Settings.System.ON_SCREEN_BUTTONS, 0) == 1);
-            mAutoBrightness = Settings.System.getInt(resolver,
-                    Settings.System.SCREEN_BRIGHTNESS_MODE, 0) ==
-                    Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC;
-
-            if (mHasNavigationBar && !checkNavBar) {
-                updateNavigationBar();
-            } else if (!mHasNavigationBar && checkNavBar) {
-                checkNavBar = false;
-                WindowManagerImpl.getDefault().removeView(mNavigationBarView);
-                mNavigationBarView = null;
-                updateNavigationBar();
-            }
-
             boolean autoBrightness = Settings.System.getInt(
                     resolver, Settings.System.SCREEN_BRIGHTNESS_MODE, 0) ==
                     Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC;
@@ -341,7 +320,6 @@ public class PhoneStatusBar extends BaseStatusBar {
                     resolver, Settings.System.STATUS_BAR_BRIGHTNESS_CONTROL, 0) == 1;
         }
     }
-
 
     private int mNavigationIconHints = 0;
     private final Animator.AnimatorListener mMakeIconsInvisible = new AnimatorListenerAdapter() {
@@ -504,7 +482,6 @@ public class PhoneStatusBar extends BaseStatusBar {
             boolean showNav = mWindowManager.hasNavigationBar();
             if (DEBUG) Slog.v(TAG, "hasNavigationBar=" + showNav);
             if (showNav && !mRecreating) {
-                checkNavBar = true;
                 mNavigationBarView =
                     (NavigationBarView) View.inflate(context, R.layout.navigation_bar, null);
 
@@ -837,33 +814,6 @@ public class PhoneStatusBar extends BaseStatusBar {
 
         WindowManagerImpl.getDefault().addView(
                 mNavigationBarView, getNavigationBarLayoutParams());
-    }
-
-    private void updateNavigationBar() {
-        mRecreating = false;
-
-        // extract notifications.
-        int nNotifs = mNotificationData.size();
-        ArrayList<Pair<IBinder, StatusBarNotification>> notifications =
-                new ArrayList<Pair<IBinder, StatusBarNotification>>(nNotifs);
-        copyNotifications(notifications, mNotificationData);
-        mNotificationData.clear();
-
-        makeStatusBarView();
-        addNavigationBar();
-
-        // recreate notifications.
-        for (int i = 0; i < nNotifs; i++) {
-            Pair<IBinder, StatusBarNotification> notifData = notifications.get(i);
-            addNotificationViews(notifData.first, notifData.second);
-        }
-
-        setAreThereNotifications();
-
-        mStatusBarContainer.addView(mStatusBarWindow);
-
-        updateExpandedViewPos(EXPANDED_LEAVE_ALONE);
-
     }
 
     private void repositionNavigationBar() {

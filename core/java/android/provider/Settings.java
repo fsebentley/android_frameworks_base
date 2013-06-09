@@ -1701,16 +1701,6 @@ public final class Settings {
          */
         public static final String VOLUME_BLUETOOTH_SCO = "volume_bluetooth_sco";
 
-
-        /* @hide */
-        public static final String VOLUME_07 = "volume_07";
-        /* @hide */
-        public static final String VOLUME_08 = "volume_08";
-        /* @hide */
-        public static final String VOLUME_09 = "volume_09";
-        /* @hide */
-        public static final String VOLUME_FM = "volume_fm";
-
         /**
          * Whether to prevent loud volume levels when headset is first plugged in.
          * @hide
@@ -1785,8 +1775,7 @@ public final class Settings {
          */
         public static final String[] VOLUME_SETTINGS = {
             VOLUME_VOICE, VOLUME_SYSTEM, VOLUME_RING, VOLUME_MUSIC,
-            VOLUME_ALARM, VOLUME_NOTIFICATION, VOLUME_BLUETOOTH_SCO,
-            VOLUME_07, VOLUME_08, VOLUME_09, VOLUME_FM
+            VOLUME_ALARM, VOLUME_NOTIFICATION, VOLUME_BLUETOOTH_SCO
         };
 
         /**
@@ -2320,13 +2309,6 @@ public final class Settings {
         public static final String UNLOCK_SOUND = "unlock_sound";
 
         /**
-         * Force the screen on after phone calls, ignore proximity sensor
-         * 0 = no, 1 = yes
-         * @hide
-         */
-        public static final String INACCURATE_PROXIMITY_WORKAROUND = "inaccurate_proximity_sensor";
-
-        /**
          * Receive incoming SIP calls?
          * 0 = no
          * 1 = yes
@@ -2582,18 +2564,6 @@ public final class Settings {
          * @hide
          */
         public static final String VOLUME_WAKE_SCREEN = "volume_wake_screen";
-
-        /**
-         * Whether to enable On Screen Buttons, the value is boolean.
-         * @hide
-         */
-        public static final String ON_SCREEN_BUTTONS = "on_screen_buttons";
-
-        /**
-         * Whether to change height of On screen Buttons.
-         * @hide
-         */
-        public static final String ON_SCREEN_BUTTONS_HEIGHT = "on_screen_buttons_height";
 
         /**
          * Whether or not volume button music controls should be enabled to seek media tracks

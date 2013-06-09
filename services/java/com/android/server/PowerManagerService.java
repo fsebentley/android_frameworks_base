@@ -309,10 +309,6 @@ public class PowerManagerService extends IPowerManager.Stub
     // power states.
     private boolean mAutoBrightnessButtonKeyboard;
 
-    // Button and keyboard backlights on some devices need the light sensor
-    // always enabled
-    private boolean mAlwaysEnableLightSensor;
-
     // Must match with the ISurfaceComposer constants in C++.
     private static final int ANIM_SETTING_ON = 0x01;
     private static final int ANIM_SETTING_OFF = 0x10;
@@ -700,8 +696,6 @@ public class PowerManagerService extends IPowerManager.Stub
                 com.android.internal.R.bool.config_automatic_brightness_available);
         mAutoBrightnessButtonKeyboard = mUseSoftwareAutoBrightness && resources.getBoolean(
                 com.android.internal.R.bool.config_autoBrightnessButtonKeyboard);
-        mAlwaysEnableLightSensor = resources.getBoolean(
-                com.android.internal.R.bool.config_alwaysEnableLightSensor);
         if (mUseSoftwareAutoBrightness) {
             mAutoBrightnessLevels = resources.getIntArray(
                     com.android.internal.R.array.config_autoBrightnessLevels);
@@ -1085,11 +1079,8 @@ public class PowerManagerService extends IPowerManager.Stub
             if ((wl.flags & LOCK_MASK) == PowerManager.PROXIMITY_SCREEN_OFF_WAKE_LOCK) {
                 mProximityWakeLockCount--;
                 if (mProximityWakeLockCount == 0) {
-                    int buggyProximity = Settings.System.getInt(mContext.getContentResolver(),
-                                             Settings.System.INACCURATE_PROXIMITY_WORKAROUND, 0);
                     if (mProximitySensorActive &&
-                            ((flags & PowerManager.WAIT_FOR_PROXIMITY_NEGATIVE) != 0) &&
-                            (buggyProximity == 0)) {
+                            ((flags & PowerManager.WAIT_FOR_PROXIMITY_NEGATIVE) != 0)) {
                         // wait for proximity sensor to go negative before disabling sensor
                         if (mDebugProximitySensor) {
                             Slog.d(TAG, "waiting for proximity sensor to go negative");
@@ -2256,26 +2247,12 @@ public class PowerManagerService extends IPowerManager.Stub
         }
         if (onMask != 0) {
             int brightness = getPreferredBrightness();
-            int buttonBrightness = brightness;
-
-            if (mButtonBrightnessOverride >= 0) {
-                buttonBrightness = mButtonBrightnessOverride;
-            }
-
             if ((newState & BATTERY_LOW_BIT) != 0 &&
                     brightness > PowerManager.BRIGHTNESS_LOW_BATTERY) {
                 brightness = PowerManager.BRIGHTNESS_LOW_BATTERY;
-                buttonBrightness = brightness;
-
             }
-
-            if (mSpew) {
-                Slog.i(TAG, "Setting brightess on " + brightness +
-                        "/" + buttonBrightness + ": " + onMask);
-            }
-
-            setLightBrightness(onMask & SCREEN_BRIGHT_BIT, brightness);
-            setLightBrightness(onMask & (BUTTON_BRIGHT_BIT | KEYBOARD_BRIGHT_BIT), buttonBrightness);
+            if (mSpew) Slog.i(TAG, "Setting brightess on " + brightness + ": " + onMask);
+            setLightBrightness(onMask, brightness);
         }
     }
 
@@ -2421,14 +2398,6 @@ public class PowerManagerService extends IPowerManager.Stub
                     Message msg = mScreenBrightnessHandler
                             .obtainMessage(ANIMATE_LIGHTS, mask, newValue);
                     mScreenBrightnessHandler.sendMessageDelayed(msg, delay);
-                } else {
-                    final boolean doScreenAnimation = (mask & (SCREEN_BRIGHT_BIT | SCREEN_ON_BIT)) != 0;
-                    final boolean turnOff = currentValue == PowerManager.BRIGHTNESS_OFF;
-                    if (turnOff && doScreenAnimation) {
-                        // Cancel all pending animations since we're turning off
-                        mScreenBrightnessHandler.removeCallbacksAndMessages(null);
-                        screenOffFinishedAnimatingLocked(mScreenOffReason);
-                    }
                 }
             }
         }
@@ -2492,6 +2461,9 @@ public class PowerManagerService extends IPowerManager.Stub
                     final boolean doScreenAnim = (mask & (SCREEN_BRIGHT_BIT | SCREEN_ON_BIT)) != 0;
                     final boolean turningOff = endValue == PowerManager.BRIGHTNESS_OFF;
                     if (turningOff && doScreenAnim) {
+                        // Cancel all pending animations since we're turning off
+                        mScreenBrightnessHandler.removeCallbacksAndMessages(null);
+                        screenOffFinishedAnimatingLocked(mScreenOffReason);
                         duration = 200; // TODO: how long should this be?
                     }
                     if (doScreenAnim) {
@@ -3540,7 +3512,7 @@ public class PowerManagerService extends IPowerManager.Stub
             Slog.d(TAG, "system ready!");
             mDoneBooting = true;
 
-            enableLightSensorLocked(mUseSoftwareAutoBrightness);
+            enableLightSensorLocked(mUseSoftwareAutoBrightness && mAutoBrightessEnabled);
 
             long identity = Binder.clearCallingIdentity();
             try {
@@ -3719,7 +3691,7 @@ public class PowerManagerService extends IPowerManager.Stub
                     + " mAutoBrightessEnabled=" + mAutoBrightessEnabled
                     + " mWaitingForFirstLightSensor=" + mWaitingForFirstLightSensor);
         }
-        if (!mAutoBrightessEnabled && !mAlwaysEnableLightSensor) {
+        if (!mAutoBrightessEnabled) {
             enable = false;
         }
         if (mSensorManager != null && mLightSensorEnabled != enable) {

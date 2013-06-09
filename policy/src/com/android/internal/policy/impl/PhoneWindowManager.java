@@ -372,6 +372,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
     boolean mEnableShiftMenuBugReports = false;
 
     boolean mHeadless;
+    boolean mDisablePhabletUi;
     boolean mSafeMode;
     WindowState mStatusBar = null;
     boolean mHasSystemNavBar;
@@ -698,10 +699,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.System.ACCELEROMETER_ROTATION_ANGLES), false, this);
             resolver.registerContentObserver(Settings.Secure.getUriFor(
                     Settings.Secure.SCREENSAVER_ENABLED), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.ON_SCREEN_BUTTONS), false, this);
-            resolver.registerContentObserver(Settings.System.getUriFor(
-                    Settings.System.ON_SCREEN_BUTTONS_HEIGHT), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
                     Settings.System.KEY_HOME_LONG_PRESS_ACTION), false, this);
             resolver.registerContentObserver(Settings.System.getUriFor(
@@ -1143,6 +1140,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         mWindowManager = windowManager;
         mWindowManagerFuncs = windowManagerFuncs;
         mPowerManager = powerManager;
+	mDisablePhabletUi = "1".equals(SystemProperties.get("ro.disable_phablet_ui", "0"));
         mHeadless = "1".equals(SystemProperties.get("ro.config.headless", "0"));
         if (!mHeadless) {
             // don't create KeyguardViewMediator if headless
@@ -1276,7 +1274,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
 
     public void setInitialDisplaySize(Display display, int width, int height) {
         mDisplay = display;
-        ContentResolver resolver = mContext.getContentResolver();
+
         int shortSize, longSize;
         if (width > height) {
             shortSize = height;
@@ -1313,6 +1311,10 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 com.android.internal.R.dimen.status_bar_height);
 
         // Height of the navigation bar when presented horizontally at bottom
+        mNavigationBarHeightForRotation[mPortraitRotation] =
+        mNavigationBarHeightForRotation[mUpsideDownRotation] =
+                mContext.getResources().getDimensionPixelSize(
+                        com.android.internal.R.dimen.navigation_bar_height);
         mNavigationBarHeightForRotation[mLandscapeRotation] =
         mNavigationBarHeightForRotation[mSeascapeRotation] =
                 mContext.getResources().getDimensionPixelSize(
@@ -1332,12 +1334,21 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                 / DisplayMetrics.DENSITY_DEVICE;
 
         if (shortSizeDp < 600) {
-            // 0-599dp: "phone" UI with a separate status & navigation bar
-            mHasSystemNavBar = false;
-            mNavigationBarCanMove = true;
+	    // 0-599dp: "phone" UI with a separate status & navigation bar
+	    if (mDisablePhabletUi) {
+		mHasSystemNavBar = true;
+		mNavigationBarCanMove = false;
+	    } else {
+		mHasSystemNavBar = false;
+		mNavigationBarCanMove = true;
+	    }
         } else if (shortSizeDp < 720) {
             // 600-719dp: "phone" UI with modifications for larger screens
-            mHasSystemNavBar = false;
+	    if (mDisablePhabletUi) {
+		mHasSystemNavBar = true;
+	    } else {
+		mHasSystemNavBar = false;
+	    }
             mNavigationBarCanMove = false;
         } else {
             // 720dp: "tablet" UI with a single combined status & navigation bar
@@ -1346,8 +1357,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         }
 
         if (!mHasSystemNavBar) {
-              mHasNavigationBar = (Settings.System.getInt(resolver,
-                    Settings.System.ON_SCREEN_BUTTONS, 0) == 1);
+            mHasNavigationBar = mContext.getResources().getBoolean(
+                    com.android.internal.R.bool.config_showNavigationBar);
             // Allow a system property to override this. Used by the emulator.
             // See also hasNavigationBar().
             String navBarOverride = SystemProperties.get("qemu.hw.mainkeys");
@@ -1407,17 +1418,8 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                     Settings.System.VOLUME_WAKE_SCREEN, 0) == 1);
             mVolBtnMusicControls = (Settings.System.getInt(resolver,
                     Settings.System.VOLBTN_MUSIC_CONTROLS, 1) == 1);
-            mHasNavigationBar = (Settings.System.getInt(resolver,
-                    Settings.System.ON_SCREEN_BUTTONS, 0) == 1);
             mHomeUnlockScreen = (Settings.System.getInt(resolver,
                     Settings.System.HOME_UNLOCK_SCREEN, 0) == 1);
-
-            int  mOnScreenButtonsHeight = (Settings.System.getInt(resolver,
-                    Settings.System.ON_SCREEN_BUTTONS_HEIGHT, 48 * DisplayMetrics.DENSITY_DEVICE/DisplayMetrics.DENSITY_DEFAULT)); //48dp dafault value.
-
-            mNavigationBarHeightForRotation[mPortraitRotation] =
-            mNavigationBarHeightForRotation[mUpsideDownRotation] = mOnScreenButtonsHeight * DisplayMetrics.DENSITY_DEVICE/DisplayMetrics.DENSITY_DEFAULT;
-
 
             boolean keyRebindingEnabled = Settings.System.getInt(resolver,
                     Settings.System.HARDWARE_KEY_REBINDING, 0) == 1;
@@ -3813,15 +3815,6 @@ public class PhoneWindowManager implements WindowManagerPolicy {
         return am.isMusicActive();
     }
 
-    boolean isFmActive() {
-        final AudioManager am = (AudioManager)mContext.getSystemService(Context.AUDIO_SERVICE);
-        if (am == null) {
-            Log.w(TAG, "isMusicActive: couldn't get AudioManager reference");
-            return false;
-        }
-        return am.isFmActive();
-    }
-
     /**
      * Tell the audio service to adjust the volume appropriate to the event.
      * @param keycode
@@ -4094,11 +4087,7 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         }
                     }
                 }
-
-                if ((result & ACTION_PASS_TO_USER) == 0) {
-                    if (isFmActive()) {
-                        handleVolumeKey(AudioManager.STREAM_FM, keyCode);
-                    } else if (isMusicActive()) {
+                if (isMusicActive() && (result & ACTION_PASS_TO_USER) == 0) {
                     if (mVolBtnMusicControls && down && (keyCode != KeyEvent.KEYCODE_VOLUME_MUTE)) {
                         mIsLongPress = false;
                         int newKeyCode = event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP ?
@@ -4117,11 +4106,9 @@ public class PhoneWindowManager implements WindowManagerPolicy {
                         }
                         if (!isScreenOn && !mVolumeWakeScreen) {
                             handleVolumeKey(AudioManager.STREAM_MUSIC, keyCode);
-                         }
+                        }
                     }
                 }
-             }
-
                 if (isScreenOn || !mVolumeWakeScreen) {
                     break;
                 } else if (keyguardActive) {

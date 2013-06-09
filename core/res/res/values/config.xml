@@ -189,6 +189,7 @@
          Wifi interfaces.  If the device doesn't want to support tethering over Wifi this
          should be empty.  An example would be "softap.*" -->
     <string-array translatable="false" name="config_tether_wifi_regexs">
+    	<item>"wlan\\d"</item>
     </string-array>
 
     <!-- List of regexpressions describing the interface (if any) that represent tetherable
@@ -251,10 +252,8 @@
     <integer-array translatable="false" name="config_tether_upstream_types">
         <item>0</item>
         <item>1</item>
-        <item>5</item>
-        <item>7</item>
-        <item>9</item>
-    </integer-array>
+        <!-- <item>4</item> -->
+</integer-array>
 
     <!-- If the DUN connection for this CDMA device supports more than just DUN -->
     <!-- traffic you should list them here. -->
@@ -911,10 +910,6 @@
          the button and keyboard backlights. -->
     <bool name="config_autoBrightnessButtonKeyboard">true</bool>
 
-    <!-- Flag indicating whether the button and keyboard backlights need the light
-         sensor always enabled. -->
-    <bool name="config_alwaysEnableLightSensor">false</bool>
-
     <!-- Path to the library that contains a device specific key handler -->
     <string name="config_deviceKeyHandlerLib" translatable="false"></string>
 
@@ -934,8 +929,6 @@
 
     <!-- Device has a h/w rotation lock switch -->
     <bool name="config_hasRotationLockSwitch">false</bool>
-
-    <bool name="config_fmSeparateVolumeControl">false</bool>
 
     <!-- Asus dock compatibility disabled by default -->
     <bool name="config_hasDockBattery">false</bool>
@@ -979,5 +972,4 @@
 
     <!-- Boolean to enable Stylus gestures -->
     <bool name="config_stylusGestures">false</bool>
-
 </resources>
